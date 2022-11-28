@@ -1,0 +1,146 @@
+---
+title: "Computational Statistics Lab 2"
+author: "Muhammad Umair and Usama Nadeem "
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Q1: Optimizing parameters
+
+# Q 1.1
+
+```{r}
+quadratic_function <- function(opt_parameter, x, y) {
+  a0<-opt_parameter[1]
+  a1<-opt_parameter[2]
+  a2<-opt_parameter[3]
+  quadratic_equation <- sum(y-(a0 + a1*x + a2*x^2))^2
+  return(quadratic_equation)
+}
+```
+
+# Q 1.2
+
+```{r}
+approximates_function <- function(interval_number, my_function) {
+ 
+  interval <- seq(0, 1, length.out = interval_number+1)
+  values_A <- matrix(NA, nrow = interval_number, ncol = 3)
+  colnames(values_A) <- c("a0", "a1", "a2")
+  values_X <- matrix(NA, nrow = interval_number, ncol = 3)
+  colnames(values_X) <- c("x0", "x1", "x2")
+  Result_matrix <- matrix(NA, nrow = interval_number, ncol = 6)
+  
+    index<-1
+    while (index <length(interval)) {
+    function_x0 <- my_function(interval[index])
+    
+    function_x1 <- my_function(mean(c(interval[index], interval[index+1]))) #mid point of interval
+    function_x2 <- my_function(interval[index+1]) #end interval
+    
+    optimization_parameter <- optim(par = c(0,1,1),
+                     fn = quadratic_function,
+                     x = c(interval[index],
+                           mean(c(interval[index], interval[index+1])),
+                           interval[index+1]),
+                     y = c(function_x0, function_x1, function_x2))$par
+    values_X[index,1:3] <- c(interval[index], mean(c(interval[index], interval[index+1])), interval[index+1])
+    values_A[index,1:3]<-optimization_parameter
+    
+    index<-index+1
+    }
+    Result_matrix<-cbind(values_A,values_X)
+    Result_matrix<-as.data.frame(Result_matrix)
+  return(Result_matrix)
+}
+```
+
+# Q 1.3
+
+```{r}
+function1_x <- function(x) {
+  cal1<- -x * (1-x)
+  return(cal1)
+}
+
+function2_x <- function(x) {
+  cal2<- -x*sin(10*pi*x)
+  return(cal2)
+}
+F1_result <- approximates_function(100, function1_x)
+F1_result$`g(x)` <- F1_result[,1] + F1_result[,2]*F1_result[,5] + F1_result[,3]*F1_result[,5]^2
+
+library(ggplot2)
+ggplot(F1_result, aes(x =x1, y =`g(x)`)) +
+  geom_function(fun = function1_x, aes(color = "red"), size = 1) +
+  geom_point() + labs(x="x",y="y")+
+  theme(legend.position = "none")
+
+
+F2_result <- approximates_function(100, function2_x)
+F2_result$`g(x)` <- F2_result[,1] + F2_result[,2]*F2_result[,5] + F2_result[,3]*F2_result[,5]^2
+
+ggplot(F2_result, aes(x = x1, y = `g(x)`)) +
+  geom_function(fun = function2_x, aes(color = "red"), size = 1) +
+  geom_point() +
+  labs(x="x",y="y")+
+  theme(legend.position = "none")
+```
+
+By analyzing the results we can conclude that the piecewise parabolic equation is working well in both of the cases. Both functions f1(x)= -x*(1-x) and f2(x)= -x*sin(10*Pi*x) are approximating well with very less variations.
+
+# Q2: Maximizing likelihood
+
+
+```{r}
+load("D:/Masters Degree/1st Semester/Computational statistics/LAB/data.RData")
+
+sum = 0
+for (i in  1:length(data))
+{
+  sum = sum + data [i]
+}
+u = sum/100
+print ("u: ")
+print (u)
+
+summation = sum((data-u)^2)
+k = 1/99
+temp = summation*k
+ans = temp^0.5
+print ("sigma:")
+print (ans)
+```
+
+# Q2.3
+
+```{r}
+MinusLogLikelihood <- function(uAndSigma, x) {
+  n <- length(x)
+  u <- uAndSigma[1]
+  sigma <- uAndSigma[2]
+  ans1 = (n/2) * log(2*pi) + (n/2) * log(sigma^2)
+  ans2 = (1/(2*sigma^2)) * sum((x-u)^2)
+  ans <- ans1 + ans2
+  return(ans)
+}
+Gradient_MinusLogLikelihood <- function(uAndSigma, x) {
+  n <- length(x)
+  u <- uAndSigma[1]
+  sigma <- uAndSigma[2]
+  SummationTerm = sum(x-u)
+  uGradient <- -1 * (1/(sigma^2)) * SummationTerm
+  sigmaGradient <- (n/sigma) - (1/sigma^3) * sum((x-u)^2)
+  ans = c(uGradient, sigmaGradient)
+  return(ans)
+}
+
+UsingCG = optim(par = c(0,1), fn =MinusLogLikelihood, method = "CG", x = data)
+UsingCGWithGradient = optim(par = c(0,1), fn = MinusLogLikelihood , method = "CG", gr = Gradient_MinusLogLikelihood, x = data)
+UsingBFGS = optim(par = c(0,1), fn = MinusLogLikelihood, method = "BFGS", x = data)
+UsingBFGSWithGradient= optim(par = c(0,1), fn = MinusLogLikelihood, method = "BFGS", gr = Gradient_MinusLogLikelihood, x = data)
+```
